@@ -1,17 +1,27 @@
 import { Component, Input, OnInit } from '@angular/core';
 import { InAppBrowser } from '@ionic-native/in-app-browser/ngx';
+import { SocialSharing } from '@ionic-native/social-sharing/ngx';
+import { ActionSheetController, ToastController } from '@ionic/angular';
 import { Article } from 'src/interfaces/news.interface';
+import { DataLocalService } from 'src/providers/dataLocal/data-local.service';
 
 @Component({
     selector: 'app-new',
     templateUrl: './new.component.html',
-    styleUrls: ['./new.component.scss']
+    styleUrls: ['./new.component.scss'],
 })
 export class NewComponent implements OnInit {
     @Input() noticia: Article;
-    @Input() i;
+    @Input() i: number;
+    @Input() inFavorites;
 
-    constructor(private iab: InAppBrowser) {}
+    constructor(
+        private iab: InAppBrowser,
+        private actionSheetCtrl: ActionSheetController,
+        private socialSharing: SocialSharing,
+        private dataLocalService: DataLocalService,
+        public toastController: ToastController
+    ) {}
 
     ngOnInit() {}
 
@@ -20,5 +30,63 @@ export class NewComponent implements OnInit {
      */
     public openNew(): void {
         const browser = this.iab.create(this.noticia.url, '_system');
+    }
+
+    /**
+     * Open New's menu
+     */
+    public async openMenu(): Promise<any> {
+        let saveDeleteBtn;
+
+        if (this.inFavorites) {
+            saveDeleteBtn = {
+                text: 'Borrar Favorito',
+                icon: 'trash',
+                handler: () => {
+                    this.dataLocalService.deleteNew(this.noticia);
+                    this.presentToast('La noticia se eliminó de favoritos.');
+                },
+            };
+        } else {
+            saveDeleteBtn = {
+                text: 'Favorito',
+                icon: 'heart',
+                handler: () => {
+                    this.dataLocalService.saveNew(this.noticia);
+                    this.presentToast('La noticia se agregó a favoritos.');
+                },
+            };
+        }
+
+        const actionSheet = await this.actionSheetCtrl.create({
+            buttons: [
+                {
+                    text: 'Compartir',
+                    icon: 'share',
+                    handler: () => {
+                        this.socialSharing.share(this.noticia.title, this.noticia.source.name, '', this.noticia.url);
+                    },
+                },
+                saveDeleteBtn,
+                {
+                    text: 'Cancelar',
+                    icon: 'close',
+                    role: 'cancel',
+                    handler: () => {
+                        console.log('Cancel clicked');
+                    },
+                },
+            ],
+        });
+
+        await actionSheet.present();
+    }
+
+    async presentToast(message: string) {
+        const toast = await this.toastController.create({
+            message,
+            duration: 2000,
+        });
+        toast.present();
     }
 }
