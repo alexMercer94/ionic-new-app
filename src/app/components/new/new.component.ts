@@ -1,7 +1,7 @@
 import { Component, Input, OnInit } from '@angular/core';
 import { InAppBrowser } from '@ionic-native/in-app-browser/ngx';
 import { SocialSharing } from '@ionic-native/social-sharing/ngx';
-import { ActionSheetController, ToastController } from '@ionic/angular';
+import { ActionSheetController, Platform, ToastController } from '@ionic/angular';
 import { Article } from 'src/interfaces/news.interface';
 import { DataLocalService } from 'src/providers/dataLocal/data-local.service';
 
@@ -20,7 +20,8 @@ export class NewComponent implements OnInit {
         private actionSheetCtrl: ActionSheetController,
         private socialSharing: SocialSharing,
         private dataLocalService: DataLocalService,
-        public toastController: ToastController
+        public toastController: ToastController,
+        private platform: Platform
     ) {}
 
     ngOnInit() {}
@@ -64,7 +65,7 @@ export class NewComponent implements OnInit {
                     text: 'Compartir',
                     icon: 'share',
                     handler: () => {
-                        this.socialSharing.share(this.noticia.title, this.noticia.source.name, '', this.noticia.url);
+                        this.shareNew();
                     },
                 },
                 saveDeleteBtn,
@@ -88,5 +89,21 @@ export class NewComponent implements OnInit {
             duration: 2000,
         });
         toast.present();
+    }
+
+    public shareNew() {
+        if (this.platform.is('cordova')) {
+            this.socialSharing.share(this.noticia.title, this.noticia.source.name, '', this.noticia.url);
+        } else {
+            if (navigator['share']) {
+                navigator['share']({
+                    title: this.noticia.title,
+                    text: this.noticia.description,
+                    url: this.noticia.url,
+                })
+                    .then(() => console.log('Successful share'))
+                    .catch((error) => console.log('Error sharing', error));
+            }
+        }
     }
 }
